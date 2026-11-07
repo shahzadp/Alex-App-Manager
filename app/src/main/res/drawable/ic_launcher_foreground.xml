@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- A stack of app tiles with a download arrow dropped into it. -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.32"
+        android:pathData="M34,30h40a6,6 0 0 1 6,6v6h-52v-6a6,6 0 0 1 6,-6z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.55"
+        android:pathData="M30,46h48a6,6 0 0 1 6,6v4h-60v-4a6,6 0 0 1 6,-6z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M26,60h56a8,8 0 0 1 8,8v14a8,8 0 0 1 -8,8h-56a8,8 0 0 1 -8,-8v-14a8,8 0 0 1 8,-8z" />
+    <path
+        android:fillColor="#3D33C9"
+        android:pathData="M50,66h8v12h9l-13,12 -13,-12h9z" />
+</vector>
