@@ -148,7 +148,7 @@ class ReleaseRepository(context: Context) {
                 instanceFollowRedirects = true
                 setRequestProperty("Accept", "application/vnd.github+json")
                 setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
-                setRequestProperty("User-Agent", "AlexApps/0.2.2 (+https://github.com/shahzadp)")
+                setRequestProperty("User-Agent", "AlexApps/0.2.3 (+https://github.com/shahzadp)")
                 prefs.getString(etagKey(item.id), null)?.let { setRequestProperty("If-None-Match", it) }
             }
 
@@ -195,7 +195,7 @@ class ReleaseRepository(context: Context) {
                 readTimeout = 20_000
                 instanceFollowRedirects = true
                 setRequestProperty("Accept", "application/atom+xml")
-                setRequestProperty("User-Agent", "AlexApps/0.2.2 (+https://github.com/shahzadp)")
+                setRequestProperty("User-Agent", "AlexApps/0.2.3 (+https://github.com/shahzadp)")
                 prefs.getString(rssEtagKey(item.id), null)?.let { setRequestProperty("If-None-Match", it) }
             }
 
@@ -268,7 +268,7 @@ class ReleaseRepository(context: Context) {
             connectTimeout = 12_000
             readTimeout = 20_000
             instanceFollowRedirects = true
-            setRequestProperty("User-Agent", "AlexApps/0.2.2 (+https://github.com/shahzadp)")
+            setRequestProperty("User-Agent", "AlexApps/0.2.3 (+https://github.com/shahzadp)")
         }
         val code = connection.responseCode
         val length = if (code in 200..299) connection.contentLengthLong.takeIf { it > 0 } ?: 0L else null
@@ -391,5 +391,6 @@ private fun canonicalDownloadUrl(repo: String?, tag: String, name: String): Stri
     val encoded = URLEncoder.encode(name, "UTF-8").replace("+", "%20")
     return "https://github.com/$repo/releases/download/$tag/$encoded"
 }
+
 
 

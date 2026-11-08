@@ -90,6 +90,9 @@ fun AlexAppsApp(viewModel: AppViewModel) {
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.refreshInstalled()
+        // RSS isn't billed against the API, so re-check on every foreground,
+        // throttled only by the short TTL inside refresh().
+        viewModel.refresh(force = false)
     }
 
     LaunchedEffect(detailId, state.rows) {
@@ -397,7 +400,7 @@ private fun SettingsSheet(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text("Alex App Manager 0.2.2", style = MaterialTheme.typography.labelLarge)
+                Text("Alex App Manager 0.2.3", style = MaterialTheme.typography.labelLarge)
                 Text(
                     text = "github.com/shahzadp",
                     style = MaterialTheme.typography.bodySmall,
@@ -415,6 +418,7 @@ private fun SettingsSheet(
         )
     }
 }
+
 
 
 

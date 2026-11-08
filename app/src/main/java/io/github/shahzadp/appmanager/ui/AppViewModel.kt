@@ -224,6 +224,11 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private companion object {
-        const val CACHE_TTL_MS = 30 * 60 * 1000L
+        /**
+         * RSS probes are free of the REST API budget, so the gate is only here to
+         * avoid spamming the network listener when the user constantly bounces in
+         * and out. A small TTL keeps the UI effectively live.
+         */
+        const val CACHE_TTL_MS = 60 * 1000L
     }
 }
