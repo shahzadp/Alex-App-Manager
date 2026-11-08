@@ -201,7 +201,7 @@ class InstallController(
                     connectTimeout = 15_000
                     readTimeout = 30_000
                     instanceFollowRedirects = true
-                    setRequestProperty("User-Agent", "AlexApps/0.2.5 (+https://github.com/shahzadp)")
+                    setRequestProperty("User-Agent", "AlexApps/0.2.6 (+https://github.com/shahzadp)")
                     setRequestProperty("Accept", "application/octet-stream")
                 }
 
@@ -444,6 +444,7 @@ class InstallController(
     private fun File.isUsableCopyOf(asset: ReleaseAsset): Boolean =
         exists() && length() > 0 && (asset.size <= 0 || length() == asset.size)
 }
+
 
 
 

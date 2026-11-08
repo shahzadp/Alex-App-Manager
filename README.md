@@ -33,7 +33,7 @@ with no connection. Seven entries — six installable APKs and the portfolio PWA
 | Alex Store | `io.github.shahzadp.alex_store` | Apps | v1.2.3 |
 | 4 Games by Alex | `com.example.artgallery` | Games | v1.37 (`horizon` asset) |
 | Project Alice | `org.projectalice.mobile` | Games | v0.6 |
-| DoL by Alex | `com.vrelnir.dol` | Games | v0.5.13.6 |
+| DoL by Alex | `com.vrelnir.dol` | Games | v0.5.13.8 |
 | Portfolio | — (`https://shahzadp.github.io/portfolio/`) | Web | PWA |
 
 Pinned versions, asset names and sizes are offline fallbacks. On launch the app
@@ -45,16 +45,18 @@ bundled or cached values stay in place.
 
 Bundled icons are only the seed. On every refresh the app compares the current
 release tag of each app against the tag stored beside its cached icon; if
-GitHub has moved on, the release APK is downloaded once, its launcher icon is
-extracted with `PackageManager.getPackageArchiveInfo`, and the library, detail
-screen and settings tile switch to the new artwork automatically. Installing an
-update through the manager caches the icon the same way. No manual icon edits
-are needed for routine releases.
+GitHub has moved on, the icon is refreshed from that release:
 
-A fresh install (or cleared app data) eagerly re-fetches all icons in the
-background from the current release APKs when the active network is unmetered
-(~270 MB once). On a metered network the bundled set is used until the device
-comes back online, then the next refresh fetches them.
+- If the release carries a tiny `ic_launcher_icon.png` (or `ic_launcher_icon.webp`,
+  `icon-512.png`, `icon.png`, `ic_launcher.png`) as an asset, the manager
+  downloads that ~10 KB file instead of the whole APK.
+- Otherwise it falls back to extracting the launcher icon from the APK with
+  `PackageManager.getPackageArchiveInfo`.
+
+Installing an update through the manager caches the icon the same way. The
+`release-icons/` folder in this repo has each app's `ic_launcher_icon.png`
+ready to attach to its GitHub release (`./release-icons/upload-icons.ps1` runs
+the upload using the GitHub CLI). No manual icon edits are needed after that.
 
 ## How the install flow works
 
