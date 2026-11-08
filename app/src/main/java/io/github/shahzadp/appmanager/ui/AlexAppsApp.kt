@@ -397,7 +397,7 @@ private fun SettingsSheet(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text("Alex App Manager 0.2.1", style = MaterialTheme.typography.labelLarge)
+                Text("Alex App Manager 0.2.2", style = MaterialTheme.typography.labelLarge)
                 Text(
                     text = "github.com/shahzadp",
                     style = MaterialTheme.typography.bodySmall,
@@ -415,5 +415,6 @@ private fun SettingsSheet(
         )
     }
 }
+
 
 

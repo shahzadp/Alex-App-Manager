@@ -201,7 +201,7 @@ class InstallController(
                     connectTimeout = 15_000
                     readTimeout = 30_000
                     instanceFollowRedirects = true
-                    setRequestProperty("User-Agent", "AlexApps/0.2.1 (+https://github.com/shahzadp)")
+                    setRequestProperty("User-Agent", "AlexApps/0.2.2 (+https://github.com/shahzadp)")
                     setRequestProperty("Accept", "application/octet-stream")
                 }
 
@@ -244,7 +244,7 @@ class InstallController(
                     }
                 }
 
-                if (asset.size > 0 && part.length() != asset.size) {
+                if (total > 0 && part.length() != total) {
                     throw IOException("The download stopped early. Try again.")
                 }
                 if (destination.exists()) destination.delete()
@@ -444,5 +444,6 @@ class InstallController(
     private fun File.isUsableCopyOf(asset: ReleaseAsset): Boolean =
         exists() && length() > 0 && (asset.size <= 0 || length() == asset.size)
 }
+
 
 

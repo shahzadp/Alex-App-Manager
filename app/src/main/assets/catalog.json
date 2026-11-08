@@ -83,7 +83,7 @@
       "assetPattern": ".*-release\\.apk$",
       "version": "0.5.13.6",
       "asset": "DoL-by-Alex-0.5.13.6-release.apk",
-      "size": 38872298,
+      "size": 39615875,
       "icon": "ic_app_dol",
       "accent": "#BE123C",
       "tags": ["Flutter", "Dart", "Offline"],

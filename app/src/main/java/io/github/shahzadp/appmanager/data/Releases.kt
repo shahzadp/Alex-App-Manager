@@ -101,16 +101,32 @@ class ReleaseRepository(context: Context) {
         if (probe != null) {
             val cachedNow = cached(item)
             prefs.edit().putLong(lastFetchKey(item.id), System.currentTimeMillis()).apply()
+            val asset = probe.assets.firstOrNull()
+            val headSize = asset?.url?.let { headAsset(it) }
             return@withContext when {
-                cachedNow != null && cachedNow.tag == probe.tag ->
-                    FetchOutcome.Unchanged(cachedNow)
-
-                probe.assets.firstOrNull()?.let { headExists(it.url) } == true -> {
-                    store(item, probe, null)
-                    FetchOutcome.Updated(probe)
+                // Same version: re-derive the true asset size even when the tag
+                // didn't move; this heals a catalogue/build mismatch without the API.
+                cachedNow != null && cachedNow.tag == probe.tag -> {
+                    if (asset != null && headSize != null && headSize > 0 &&
+                        cachedNow.apk(item)?.size != headSize
+                    ) {
+                        val fixed = probe.copy(assets = listOf(asset.copy(size = headSize)))
+                        store(item, fixed, null)
+                        FetchOutcome.Updated(fixed)
+                    } else {
+                        FetchOutcome.Unchanged(cachedNow)
+                    }
                 }
 
-                // Feed disagrees with itself (asset renamed?). Trust the API.
+                // New version: trust HEAD to establish the real asset before
+                // advertising it; if HEAD can't decide, let the API answer.
+                headSize != null -> {
+                    val size = if (headSize > 0) headSize else 0L // 0 = size unknown
+                    val fixed = probe.copy(assets = listOf(asset!!.copy(size = size)))
+                    store(item, fixed, null)
+                    FetchOutcome.Updated(fixed)
+                }
+
                 else -> fetchViaApi(item)
             }
         }
@@ -132,7 +148,7 @@ class ReleaseRepository(context: Context) {
                 instanceFollowRedirects = true
                 setRequestProperty("Accept", "application/vnd.github+json")
                 setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
-                setRequestProperty("User-Agent", "AlexApps/0.2.1 (+https://github.com/shahzadp)")
+                setRequestProperty("User-Agent", "AlexApps/0.2.2 (+https://github.com/shahzadp)")
                 prefs.getString(etagKey(item.id), null)?.let { setRequestProperty("If-None-Match", it) }
             }
 
@@ -179,7 +195,7 @@ class ReleaseRepository(context: Context) {
                 readTimeout = 20_000
                 instanceFollowRedirects = true
                 setRequestProperty("Accept", "application/atom+xml")
-                setRequestProperty("User-Agent", "AlexApps/0.2.1 (+https://github.com/shahzadp)")
+                setRequestProperty("User-Agent", "AlexApps/0.2.2 (+https://github.com/shahzadp)")
                 prefs.getString(rssEtagKey(item.id), null)?.let { setRequestProperty("If-None-Match", it) }
             }
 
@@ -243,20 +259,23 @@ class ReleaseRepository(context: Context) {
         }
     }
 
-    /** True when the (possibly CDN-hosted) asset exists; HEAD with no API budget. */
-    private fun headExists(url: String): Boolean = try {
+    /** True when the (possibly CDN-hosted) asset exists; HEAD with no API budget.
+     *  Returns the asset's Content-Length when known, or 0 when the asset exists
+     *  but the server doesn't report a size, or null when it doesn't exist. */
+    private fun headAsset(url: String): Long? = try {
         val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = "HEAD"
             connectTimeout = 12_000
             readTimeout = 20_000
             instanceFollowRedirects = true
-            setRequestProperty("User-Agent", "AlexApps/0.2.1 (+https://github.com/shahzadp)")
+            setRequestProperty("User-Agent", "AlexApps/0.2.2 (+https://github.com/shahzadp)")
         }
         val code = connection.responseCode
+        val length = if (code in 200..299) connection.contentLengthLong.takeIf { it > 0 } ?: 0L else null
         connection.disconnect()
-        code in 200..299
+        length
     } catch (_: Exception) {
-        false
+        null
     }
 
     private fun urlDecode(value: String): String = runCatching {
@@ -372,4 +391,5 @@ private fun canonicalDownloadUrl(repo: String?, tag: String, name: String): Stri
     val encoded = URLEncoder.encode(name, "UTF-8").replace("+", "%20")
     return "https://github.com/$repo/releases/download/$tag/$encoded"
 }
+
 
