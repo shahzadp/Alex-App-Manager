@@ -191,8 +191,12 @@ plus launcher intents, so no broad `QUERY_ALL_PACKAGES` permission is needed.
 
 ## Notes and limits
 
-- GitHub's unauthenticated API allows 60 requests an hour. Results are cached;
-  the UI surfaces the limit instead of failing silently.
+- GitHub's unauthenticated REST API allows 60 requests an hour. The manager
+  doesn't spend that budget on routine checks: version detection uses each
+  repository's public `releases.atom` feed, which isn't billed, and the
+  `releases/latest` API is only called when the feed shows a tag change.
+  Steady-state hourly usage is effectively zero; cached values remain the
+  fallback if GitHub is unreachable.
 - The catalogue is static by design. Adding an app means editing
   `assets/catalog.json` (and adding its icon to `res/drawable-nodpi`).
 - The portfolio opens in the external browser. Installing it, and caching it for

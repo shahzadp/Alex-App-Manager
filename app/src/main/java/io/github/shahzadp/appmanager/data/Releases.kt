@@ -86,7 +86,41 @@ class ReleaseRepository(context: Context) {
     fun lastFetch(item: CatalogItem): Long =
         prefs.getLong(lastFetchKey(item.id), 0L)
 
+    /**
+     * Probes GitHub for a new release. The `releases.atom` feed carries the
+     * same information but doesn't count against the unauthenticated REST
+     * budget, so routine checks cost nothing even when the API limit is spent.
+     * Only a tag change (or feed trouble) triggers a single `releases/latest`
+     * REST call per changed app; when even that is unavailable, the cached
+     * catalogue stays authoritative.
+     */
     suspend fun fetch(item: CatalogItem): FetchOutcome = withContext(Dispatchers.IO) {
+        val repo = item.repo ?: return@withContext FetchOutcome.Failed("This entry is not hosted on GitHub.")
+
+        val probe = runCatching { probeRss(item) }.getOrNull()
+        if (probe != null) {
+            val cachedNow = cached(item)
+            prefs.edit().putLong(lastFetchKey(item.id), System.currentTimeMillis()).apply()
+            return@withContext when {
+                cachedNow != null && cachedNow.tag == probe.tag ->
+                    FetchOutcome.Unchanged(cachedNow)
+
+                probe.assets.firstOrNull()?.let { headExists(it.url) } == true -> {
+                    store(item, probe, null)
+                    FetchOutcome.Updated(probe)
+                }
+
+                // Feed disagrees with itself (asset renamed?). Trust the API.
+                else -> fetchViaApi(item)
+            }
+        }
+
+        // RSS unavailable or unparseable: fall back to one REST call per app.
+        fetchViaApi(item)
+    }
+
+    /** Authoritative version check via the REST API (used only when RSS can't do it). */
+    private suspend fun fetchViaApi(item: CatalogItem): FetchOutcome = withContext(Dispatchers.IO) {
         val repo = item.repo ?: return@withContext FetchOutcome.Failed("This entry is not hosted on GitHub.")
         var connection: HttpURLConnection? = null
         try {
@@ -98,7 +132,7 @@ class ReleaseRepository(context: Context) {
                 instanceFollowRedirects = true
                 setRequestProperty("Accept", "application/vnd.github+json")
                 setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
-                setRequestProperty("User-Agent", "AlexApps/0.2 (+https://github.com/shahzadp)")
+                setRequestProperty("User-Agent", "AlexApps/0.2.1 (+https://github.com/shahzadp)")
                 prefs.getString(etagKey(item.id), null)?.let { setRequestProperty("If-None-Match", it) }
             }
 
@@ -132,6 +166,130 @@ class ReleaseRepository(context: Context) {
             connection?.disconnect()
         }
     }
+
+    /** Parses the public `releases.atom` feed; returns null on any trouble. */
+    private fun probeRss(item: CatalogItem): Release? {
+        val repo = item.repo ?: return null
+        var connection: HttpURLConnection? = null
+        try {
+            connection = (URL("https://github.com/$repo/releases.atom").openConnection()
+                as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 12_000
+                readTimeout = 20_000
+                instanceFollowRedirects = true
+                setRequestProperty("Accept", "application/atom+xml")
+                setRequestProperty("User-Agent", "AlexApps/0.2.1 (+https://github.com/shahzadp)")
+                prefs.getString(rssEtagKey(item.id), null)?.let { setRequestProperty("If-None-Match", it) }
+            }
+
+            val code = connection.responseCode
+            if (code == 304) {
+                return cached(item) ?: pinned(item)
+            }
+            if (code !in 200..299) return null
+
+            val body = connection.inputStream.bufferedReader().use { it.readText() }
+            connection.getHeaderField("ETag")?.takeIf { it.isNotBlank() }?.let { etag ->
+                prefs.edit().putString(rssEtagKey(item.id), etag).apply()
+            }
+
+            val entry = Regex("(?s)<entry>.*?</entry>").find(body)?.value ?: return null
+            val tag = Regex("releases/tag/([^\"'<]+)").find(entry)?.groupValues?.get(1)?.let { urlDecode(it) }
+                ?.takeIf { it.isNotBlank() }
+                ?: return null
+            val title = Regex("<title[^>]*>(.*?)</title>", RegexOption.IGNORE_CASE)
+                .find(entry)?.groupValues?.get(1)?.let(::stripHtml)?.trim()
+                ?.ifBlank { tag } ?: tag
+            val updated = Regex("<updated>(.*?)</updated>").find(entry)?.groupValues?.get(1)
+            val notes = Regex("(?s)<content[^>]*>(.*?)</content>", RegexOption.IGNORE_CASE)
+                .find(entry)?.groupValues?.get(1)
+                ?: Regex("(?s)<summary[^>]*>(.*?)</summary>", RegexOption.IGNORE_CASE).find(entry)?.groupValues?.get(1)
+                ?: ""
+            val asset = probeAsset(item, tag)
+            return Release(
+                tag = tag,
+                title = title,
+                notes = stripHtml(notes),
+                publishedAt = updated,
+                assets = listOfNotNull(asset),
+                fetchedAt = System.currentTimeMillis(),
+                fromNetwork = true,
+            )
+        } finally {
+            connection?.disconnect()
+        }
+    }
+
+    private fun probeAsset(item: CatalogItem, tag: String): ReleaseAsset? {
+        val name = guessAssetName(item, tag) ?: return null
+        val url = canonicalDownloadUrl(item.repo, tag, name) ?: return null
+        return ReleaseAsset(name, item.pinnedSize, url)
+    }
+
+    /**
+     * Catalogue assets keep stable names, but DoL-style names embed the version
+     * ("DoL-by-Alex-0.5.13.6-release.apk"); substitute the new tag so HEAD checks
+     * and called downloads stay valid for releases we haven't seen yet.
+     */
+    private fun guessAssetName(item: CatalogItem, tag: String): String? {
+        val base = item.pinnedAsset ?: return null
+        val bare = tag.removePrefix("v").removePrefix("V")
+        val pinned = item.pinnedVersion
+        return if (pinned.isNotBlank() && base.contains(pinned)) {
+            base.replace(pinned, bare)
+        } else {
+            base
+        }
+    }
+
+    /** True when the (possibly CDN-hosted) asset exists; HEAD with no API budget. */
+    private fun headExists(url: String): Boolean = try {
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+            requestMethod = "HEAD"
+            connectTimeout = 12_000
+            readTimeout = 20_000
+            instanceFollowRedirects = true
+            setRequestProperty("User-Agent", "AlexApps/0.2.1 (+https://github.com/shahzadp)")
+        }
+        val code = connection.responseCode
+        connection.disconnect()
+        code in 200..299
+    } catch (_: Exception) {
+        false
+    }
+
+    private fun urlDecode(value: String): String = runCatching {
+        java.net.URLDecoder.decode(value, "UTF-8")
+    }.getOrDefault(value)
+
+    /** Feed bodies are entity-escaped HTML; decode before stripping tags. */
+    private fun stripHtml(raw: String): String {
+        if (raw.isBlank()) return ""
+        val decoded = decodeEntities(
+            raw.replace("<![CDATA[", "").replace("]]>", ""),
+        )
+        val text = decoded
+            .replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n")
+            .replace(Regex("<li>", RegexOption.IGNORE_CASE), "- ")
+            .replace(Regex("</(p|div|h[1-6]|ul|ol)>", RegexOption.IGNORE_CASE), "\n\n")
+            .replace(Regex("</li>", RegexOption.IGNORE_CASE), "\n")
+            .replace(Regex("<[^>]+>"), "")
+        return text
+            .replace('\u00A0', ' ')
+            .replace(Regex("[ \\t]*\n[ \\t]*"), "\n")
+            .replace(Regex("\n{3,}"), "\n\n")
+            .trim()
+    }
+
+    private fun decodeEntities(value: String): String = value
+        .replace("&amp;", "&")
+        .replace("&lt;", "<")
+        .replace("&gt;", ">")
+        .replace("&quot;", "\"")
+        .replace("&#39;", "'")
+        .replace("&apos;", "'")
+        .replace("&nbsp;", " ")
 
     private fun store(item: CatalogItem, release: Release, etag: String?) {
         val json = JSONObject().apply {
@@ -205,6 +363,7 @@ class ReleaseRepository(context: Context) {
 
     private fun key(id: String) = "release:$id"
     private fun etagKey(id: String) = "etag:$id"
+    private fun rssEtagKey(id: String) = "rss-etag:$id"
     private fun lastFetchKey(id: String) = "fetched:$id"
 }
 

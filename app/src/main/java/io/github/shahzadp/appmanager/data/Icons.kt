@@ -105,7 +105,7 @@ class IconRepository(private val context: Context) {
                 connectTimeout = 20_000
                 readTimeout = 45_000
                 instanceFollowRedirects = true
-                setRequestProperty("User-Agent", "AlexApps/0.2 (+https://github.com/shahzadp)")
+                setRequestProperty("User-Agent", "AlexApps/0.2.1 (+https://github.com/shahzadp)")
             }
             if (connection.responseCode !in 200..299) {
                 error("Download failed (HTTP ${connection.responseCode}).")
@@ -123,4 +123,6 @@ class IconRepository(private val context: Context) {
 
     private fun versionKey(id: String) = "version:$id"
 }
+
+
 
