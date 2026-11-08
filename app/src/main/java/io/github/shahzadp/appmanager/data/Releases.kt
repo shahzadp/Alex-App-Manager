@@ -104,11 +104,14 @@ class ReleaseRepository(context: Context) {
             val asset = probe.assets.firstOrNull()
             val headSize = asset?.url?.let { headAsset(it) }
             return@withContext when {
-                // Same version: re-derive the true asset size even when the tag
+                // Same version: re-derive URL and true size even when the tag
                 // didn't move; this heals a catalogue/build mismatch without the API.
                 cachedNow != null && cachedNow.tag == probe.tag -> {
+                    val cachedAsset = cachedNow.apk(item)
                     if (asset != null && headSize != null && headSize > 0 &&
-                        cachedNow.apk(item)?.size != headSize
+                        (cachedAsset == null ||
+                            cachedAsset.size != headSize ||
+                            cachedAsset.url != asset.url)
                     ) {
                         val fixed = probe.copy(assets = listOf(asset.copy(size = headSize)))
                         store(item, fixed, null)
@@ -120,9 +123,9 @@ class ReleaseRepository(context: Context) {
 
                 // New version: trust HEAD to establish the real asset before
                 // advertising it; if HEAD can't decide, let the API answer.
-                headSize != null -> {
+                headSize != null && asset != null -> {
                     val size = if (headSize > 0) headSize else 0L // 0 = size unknown
-                    val fixed = probe.copy(assets = listOf(asset!!.copy(size = size)))
+                    val fixed = probe.copy(assets = listOf(asset.copy(size = size)))
                     store(item, fixed, null)
                     FetchOutcome.Updated(fixed)
                 }
@@ -148,7 +151,7 @@ class ReleaseRepository(context: Context) {
                 instanceFollowRedirects = true
                 setRequestProperty("Accept", "application/vnd.github+json")
                 setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
-                setRequestProperty("User-Agent", "AlexApps/0.2.3 (+https://github.com/shahzadp)")
+                setRequestProperty("User-Agent", "AlexApps/0.2.4 (+https://github.com/shahzadp)")
                 prefs.getString(etagKey(item.id), null)?.let { setRequestProperty("If-None-Match", it) }
             }
 
@@ -195,20 +198,17 @@ class ReleaseRepository(context: Context) {
                 readTimeout = 20_000
                 instanceFollowRedirects = true
                 setRequestProperty("Accept", "application/atom+xml")
-                setRequestProperty("User-Agent", "AlexApps/0.2.3 (+https://github.com/shahzadp)")
-                prefs.getString(rssEtagKey(item.id), null)?.let { setRequestProperty("If-None-Match", it) }
+                // Never send If-None-Match: the feed keeps the same weak ETag
+                // across content changes, so the app could get stuck on 304
+                // forever and never see a new release. The payload is ~5 KB
+                // and isn't billed against the API budget, so always fetch it.
+                setRequestProperty("User-Agent", "AlexApps/0.2.4 (+https://github.com/shahzadp)")
             }
 
             val code = connection.responseCode
-            if (code == 304) {
-                return cached(item) ?: pinned(item)
-            }
             if (code !in 200..299) return null
 
             val body = connection.inputStream.bufferedReader().use { it.readText() }
-            connection.getHeaderField("ETag")?.takeIf { it.isNotBlank() }?.let { etag ->
-                prefs.edit().putString(rssEtagKey(item.id), etag).apply()
-            }
 
             val entry = Regex("(?s)<entry>.*?</entry>").find(body)?.value ?: return null
             val tag = Regex("releases/tag/([^\"'<]+)").find(entry)?.groupValues?.get(1)?.let { urlDecode(it) }
@@ -268,7 +268,7 @@ class ReleaseRepository(context: Context) {
             connectTimeout = 12_000
             readTimeout = 20_000
             instanceFollowRedirects = true
-            setRequestProperty("User-Agent", "AlexApps/0.2.3 (+https://github.com/shahzadp)")
+            setRequestProperty("User-Agent", "AlexApps/0.2.4 (+https://github.com/shahzadp)")
         }
         val code = connection.responseCode
         val length = if (code in 200..299) connection.contentLengthLong.takeIf { it > 0 } ?: 0L else null
@@ -341,8 +341,11 @@ class ReleaseRepository(context: Context) {
             .apply()
     }
 
+    /** Parses the stored or network release entry; returns null on trouble. */
     private fun parseRelease(json: JSONObject, item: CatalogItem): Release {
-        val tag = json.optString("tag_name").ifBlank { "v${item.pinnedVersion}" }
+        // Network responses use "tag_name"; our own stored entries use "tag".
+        val tag = json.optString("tag_name").ifBlank { json.optString("tag") }
+            .ifBlank { "v${item.pinnedVersion}" }
         val assetsJson = json.optJSONArray("assets") ?: JSONArray()
         val assets = buildList {
             for (index in 0 until assetsJson.length()) {
@@ -350,9 +353,9 @@ class ReleaseRepository(context: Context) {
                 val name = asset.optString("name")
                 if (!name.endsWith(".apk", ignoreCase = true)) continue
                 // Network responses use browser_download_url; our own cache uses url.
-                val rawUrl = asset.optString("url").ifBlank {
-                    asset.optString("browser_download_url")
-                }
+                val rawUrl = asset.optString("browser_download_url").ifBlank {
+                    asset.optString("url")
+                }.takeUnless { apiAssetsEndpoint.matches(it) }.orEmpty()
                 val url = if (rawUrl.startsWith("https://", ignoreCase = true) ||
                     rawUrl.startsWith("http://", ignoreCase = true)
                 ) {
@@ -369,6 +372,12 @@ class ReleaseRepository(context: Context) {
                 )
             }
         }
+        if (assets.isEmpty() && json.has("assets")) {
+            // A stored entry with no usable APK URLs is worse than no entry
+            // at all (downloads would fetch the API JSON endpoint instead of
+            // the APK). Treat it as absent and let the caller re-fetch.
+            throw IllegalStateException("no usable APK assets")
+        }
         return Release(
             tag = tag,
             title = json.optString("name").ifBlank { item.name },
@@ -382,7 +391,6 @@ class ReleaseRepository(context: Context) {
 
     private fun key(id: String) = "release:$id"
     private fun etagKey(id: String) = "etag:$id"
-    private fun rssEtagKey(id: String) = "rss-etag:$id"
     private fun lastFetchKey(id: String) = "fetched:$id"
 }
 
@@ -391,6 +399,11 @@ private fun canonicalDownloadUrl(repo: String?, tag: String, name: String): Stri
     val encoded = URLEncoder.encode(name, "UTF-8").replace("+", "%20")
     return "https://github.com/$repo/releases/download/$tag/$encoded"
 }
+
+/** The REST endpoint for an asset's JSON descriptor — never a browser download URL. */
+private val apiAssetsEndpoint =
+    Regex("^https?://api\\.github\\.com/repos/[^/]+/[^/]+/releases/assets/\\d+$")
+
 
 
 

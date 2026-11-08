@@ -30,8 +30,8 @@ android {
         applicationId = "io.github.shahzadp.appmanager"
         minSdk = 26
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.2.3"
+        versionCode = 6
+        versionName = "0.2.4"
 
         vectorDrawables.useSupportLibrary = true
     }
@@ -50,7 +50,7 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            if (releaseSigningReady) {
+                        if (releaseSigningReady) {
                 signingConfig = signingConfigs.getByName("release")
             } else {
                 println("release signing not configured; building an unsigned release APK. " +
@@ -110,6 +110,9 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest:1.12.0")
     testImplementation("junit:junit:4.13.2")
 }
+
+
+
 
 
 
