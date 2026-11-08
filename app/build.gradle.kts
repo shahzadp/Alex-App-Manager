@@ -30,8 +30,8 @@ android {
         applicationId = "io.github.shahzadp.appmanager"
         minSdk = 26
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.2.6"
+        versionCode = 9
+        versionName = "0.2.7"
 
         vectorDrawables.useSupportLibrary = true
     }
@@ -110,6 +110,8 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest:1.12.0")
     testImplementation("junit:junit:4.13.2")
 }
+
+
 
 
 

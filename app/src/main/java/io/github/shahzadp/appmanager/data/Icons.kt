@@ -32,21 +32,25 @@ class IconRepository(private val context: Context) {
 
     fun current(id: String): File = File(dir, "$id.png")
 
+    /**
+     * Tries the release's icon asset first — ~10 KB, free of the REST API budget.
+     * If that fails (or is absent) and the release tag moved on, falls back to a
+     * full APK extraction. The asset's content is what gates an UI update.
+     */
     suspend fun maybeRefresh(items: List<CatalogItem>, releases: Map<String, Release>) {
         withContext(Dispatchers.IO) {
             for (item in items) {
                 if (item.isWeb) continue
                 val release = releases[item.id] ?: continue
                 val cachedVersion = prefs.getString(versionKey(item.id), null)
-                if (cachedVersion == null) {
-                    // Fresh install or cleared data: bundled icons stay until the
-                    // next release tag moves. Don't download anything here.
-                    prefs.edit().putString(versionKey(item.id), release.tag).apply()
-                    continue
-                }
+
+                // Cheap path first — always try it.
+                if (fetchFromSmallAsset(item, release)) continue
                 if (cachedVersion == release.tag) continue
-                // A new release tag — replace cached icons from the new APK.
-                fetch(item, release)
+
+                // No icon asset or fetch failed, and the release moved on:
+                // extract the icon from the APK.
+                fetchFromFullApk(item, release)
             }
         }
     }
@@ -75,6 +79,16 @@ class IconRepository(private val context: Context) {
             temp.delete()
             if (bytes == null) continue
             val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size) ?: continue
+
+            // If the cached icon matches the asset byte-for-byte, skip the write.
+            if (current(item.id).isFile && runCatching { current(item.id).readBytes() }.getOrNull()
+                    ?.contentEquals(bytes) == true
+            ) {
+                decoded.recycle()
+                prefs.edit().putString(versionKey(item.id), release.tag).apply()
+                return true
+            }
+
             val side = 512
             val square = Bitmap.createScaledBitmap(decoded, side, side, true)
             decoded.recycle()
@@ -148,7 +162,7 @@ class IconRepository(private val context: Context) {
                 connectTimeout = 20_000
                 readTimeout = 45_000
                 instanceFollowRedirects = true
-                setRequestProperty("User-Agent", "AlexApps/0.2.6 (+https://github.com/shahzadp)")
+                setRequestProperty("User-Agent", "AlexApps/0.2.7 (+https://github.com/shahzadp)")
             }
             if (connection.responseCode !in 200..299) {
                 error("Download failed (HTTP ${connection.responseCode}).")
@@ -177,6 +191,8 @@ class IconRepository(private val context: Context) {
         )
     }
 }
+
+
 
 
 
