@@ -151,7 +151,7 @@ class ReleaseRepository(context: Context) {
                 instanceFollowRedirects = true
                 setRequestProperty("Accept", "application/vnd.github+json")
                 setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
-                setRequestProperty("User-Agent", "AlexApps/0.2.7 (+https://github.com/shahzadp)")
+                setRequestProperty("User-Agent", "AlexApps/0.2.8 (+https://github.com/shahzadp)")
                 prefs.getString(etagKey(item.id), null)?.let { setRequestProperty("If-None-Match", it) }
             }
 
@@ -202,7 +202,7 @@ class ReleaseRepository(context: Context) {
                 // across content changes, so the app could get stuck on 304
                 // forever and never see a new release. The payload is ~5 KB
                 // and isn't billed against the API budget, so always fetch it.
-                setRequestProperty("User-Agent", "AlexApps/0.2.7 (+https://github.com/shahzadp)")
+                setRequestProperty("User-Agent", "AlexApps/0.2.8 (+https://github.com/shahzadp)")
             }
 
             val code = connection.responseCode
@@ -268,7 +268,7 @@ class ReleaseRepository(context: Context) {
             connectTimeout = 12_000
             readTimeout = 20_000
             instanceFollowRedirects = true
-            setRequestProperty("User-Agent", "AlexApps/0.2.7 (+https://github.com/shahzadp)")
+            setRequestProperty("User-Agent", "AlexApps/0.2.8 (+https://github.com/shahzadp)")
         }
         val code = connection.responseCode
         val length = if (code in 200..299) connection.contentLengthLong.takeIf { it > 0 } ?: 0L else null
@@ -403,6 +403,7 @@ internal fun canonicalDownloadUrl(repo: String?, tag: String, name: String): Str
 /** The REST endpoint for an asset's JSON descriptor — never a browser download URL. */
 private val apiAssetsEndpoint =
     Regex("^https?://api\\.github\\.com/repos/[^/]+/[^/]+/releases/assets/\\d+$")
+
 
 
 
