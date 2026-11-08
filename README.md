@@ -51,6 +51,11 @@ screen and settings tile switch to the new artwork automatically. Installing an
 update through the manager caches the icon the same way. No manual icon edits
 are needed for routine releases.
 
+A fresh install (or cleared app data) eagerly re-fetches all icons in the
+background from the current release APKs when the active network is unmetered
+(~270 MB once). On a metered network the bundled set is used until the device
+comes back online, then the next refresh fetches them.
+
 ## How the install flow works
 
 1. **Resolve** the latest release and pick the APK matching the catalogue's

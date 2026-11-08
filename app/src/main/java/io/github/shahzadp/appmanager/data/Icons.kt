@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.net.ConnectivityManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,17 +34,24 @@ class IconRepository(private val context: Context) {
 
     suspend fun maybeRefresh(items: List<CatalogItem>, releases: Map<String, Release>) {
         withContext(Dispatchers.IO) {
+            val unmetered = isUnmetered()
             for (item in items) {
                 if (item.isWeb) continue
                 val release = releases[item.id] ?: continue
                 val cachedVersion = prefs.getString(versionKey(item.id), null)
                 if (cachedVersion == null) {
-                    // Seed from the pinned/current tag so a fresh install never
-                    // downloads anything until GitHub ships a new release.
-                    prefs.edit().putString(versionKey(item.id), release.tag).apply()
+                    // Fresh install (or cleared data). Bundled icons are the
+                    // fallback, but fetch the current release APKs' icons once
+                    // instead so the first impression isn't stale artwork.
+                    // Only do it on unmetered networks — that's a ~270 MB
+                    // one-time total for the whole catalogue.
+                    if (unmetered) {
+                        fetch(item, release)
+                    }
                     continue
                 }
                 if (cachedVersion == release.tag) continue
+                // A new release tag — replace cached icons from the new APK.
                 fetch(item, release)
             }
         }
@@ -105,7 +113,7 @@ class IconRepository(private val context: Context) {
                 connectTimeout = 20_000
                 readTimeout = 45_000
                 instanceFollowRedirects = true
-                setRequestProperty("User-Agent", "AlexApps/0.2.4 (+https://github.com/shahzadp)")
+                setRequestProperty("User-Agent", "AlexApps/0.2.5 (+https://github.com/shahzadp)")
             }
             if (connection.responseCode !in 200..299) {
                 error("Download failed (HTTP ${connection.responseCode}).")
@@ -122,7 +130,14 @@ class IconRepository(private val context: Context) {
     }
 
     private fun versionKey(id: String) = "version:$id"
+
+    private fun isUnmetered(): Boolean = runCatching {
+        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            ?: return@runCatching true
+        !cm.isActiveNetworkMetered
+    }.getOrDefault(true)
 }
+
 
 
 
