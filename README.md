@@ -41,6 +41,16 @@ asks GitHub for the latest release of each repository, with ETag caching and a
 30-minute TTL. If the network or the unauthenticated rate limit fails, the
 bundled or cached values stay in place.
 
+## Icons refresh themselves
+
+Bundled icons are only the seed. On every refresh the app compares the current
+release tag of each app against the tag stored beside its cached icon; if
+GitHub has moved on, the release APK is downloaded once, its launcher icon is
+extracted with `PackageManager.getPackageArchiveInfo`, and the library, detail
+screen and settings tile switch to the new artwork automatically. Installing an
+update through the manager caches the icon the same way. No manual icon edits
+are needed for routine releases.
+
 ## How the install flow works
 
 1. **Resolve** the latest release and pick the APK matching the catalogue's

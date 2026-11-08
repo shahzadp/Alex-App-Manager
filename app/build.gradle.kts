@@ -1,4 +1,4 @@
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+﻿import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.io.File
 
 // Release signing is optional: pass -PALEX_APPS_STORE_PASSWORD (and optionally
@@ -30,8 +30,8 @@ android {
         applicationId = "io.github.shahzadp.appmanager"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
 
         vectorDrawables.useSupportLibrary = true
     }
@@ -110,3 +110,5 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest:1.12.0")
     testImplementation("junit:junit:4.13.2")
 }
+
+

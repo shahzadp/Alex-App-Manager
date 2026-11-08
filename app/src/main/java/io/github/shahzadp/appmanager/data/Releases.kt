@@ -1,4 +1,4 @@
-package io.github.shahzadp.appmanager.data
+﻿package io.github.shahzadp.appmanager.data
 
 import android.content.Context
 import kotlinx.coroutines.Dispatchers
@@ -98,7 +98,7 @@ class ReleaseRepository(context: Context) {
                 instanceFollowRedirects = true
                 setRequestProperty("Accept", "application/vnd.github+json")
                 setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
-                setRequestProperty("User-Agent", "AlexApps/0.1 (+https://github.com/shahzadp)")
+                setRequestProperty("User-Agent", "AlexApps/0.2 (+https://github.com/shahzadp)")
                 prefs.getString(etagKey(item.id), null)?.let { setRequestProperty("If-None-Match", it) }
             }
 
@@ -213,3 +213,4 @@ private fun canonicalDownloadUrl(repo: String?, tag: String, name: String): Stri
     val encoded = URLEncoder.encode(name, "UTF-8").replace("+", "%20")
     return "https://github.com/$repo/releases/download/$tag/$encoded"
 }
+

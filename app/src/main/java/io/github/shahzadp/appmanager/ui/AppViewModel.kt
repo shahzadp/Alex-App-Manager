@@ -11,6 +11,7 @@ import io.github.shahzadp.appmanager.data.Release
 import io.github.shahzadp.appmanager.data.ThemeMode
 import io.github.shahzadp.appmanager.data.Versions
 import io.github.shahzadp.appmanager.install.InstallState
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -168,6 +169,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
             refreshing.value = false
+            viewModelScope.launch(Dispatchers.IO) {
+                container.icons.maybeRefresh(items, releases.value)
+            }
         }
     }
 

@@ -2,6 +2,7 @@
 
 package io.github.shahzadp.appmanager.ui.components
 
+import android.graphics.BitmapFactory
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Image
@@ -37,11 +38,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -49,8 +53,19 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.shahzadp.appmanager.AlexApps
 import io.github.shahzadp.appmanager.data.CatalogItem
 import io.github.shahzadp.appmanager.install.InstallState
+import kotlinx.coroutines.flow.MutableStateFlow
+
+@Composable
+private fun rememberIconRevision(): Int {
+    val icons = AlexApps.container?.icons
+    val fallback = remember { MutableStateFlow(0) }
+    val flow = icons?.revision ?: fallback
+    return flow.collectAsStateWithLifecycle().value
+}
 
 @Composable
 fun AppIcon(
@@ -60,6 +75,15 @@ fun AppIcon(
 ) {
     val accent = Color(item.accent)
     val corner = RoundedCornerShape(size * 0.24f)
+    val iconRevision = rememberIconRevision()
+    val image = remember(item.id, iconRevision) {
+        val file = AlexApps.container?.icons?.current(item.id) ?: return@remember null
+        if (file.isFile) {
+            BitmapFactory.decodeFile(file.absolutePath)?.asImageBitmap()
+        } else {
+            null
+        }
+    }
     Box(
         modifier = modifier
             .size(size)
@@ -73,7 +97,7 @@ fun AppIcon(
         contentAlignment = Alignment.Center,
     ) {
         Image(
-            painter = painterResource(item.iconRes),
+            painter = image?.let { BitmapPainter(it) } ?: painterResource(item.iconRes),
             contentDescription = null,
             contentScale = ContentScale.Fit,
             modifier = Modifier.fillMaxSize().padding(size * 0.08f),

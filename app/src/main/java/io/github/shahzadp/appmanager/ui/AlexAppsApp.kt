@@ -1,4 +1,4 @@
-@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+﻿@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 
 package io.github.shahzadp.appmanager.ui
 
@@ -225,7 +225,7 @@ private fun subtitleFor(tab: Tab, state: LibraryState): String = when (tab) {
         val installed = state.installedCount
         val updates = state.updateCount
         when {
-            updates > 0 -> "$installed installed · $updates update${if (updates == 1) "" else "s"}"
+            updates > 0 -> "$installed installed Â· $updates update${if (updates == 1) "" else "s"}"
             installed > 0 -> "$installed of ${state.rows.count { !it.item.isWeb }} installed"
             else -> "Apps, games and the portfolio from GitHub"
         }
@@ -397,7 +397,7 @@ private fun SettingsSheet(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(Modifier.weight(1f)) {
-                Text("Alex App Manager 0.1.0", style = MaterialTheme.typography.labelLarge)
+                Text("Alex App Manager 0.2.0", style = MaterialTheme.typography.labelLarge)
                 Text(
                     text = "github.com/shahzadp",
                     style = MaterialTheme.typography.bodySmall,
@@ -415,3 +415,4 @@ private fun SettingsSheet(
         )
     }
 }
+

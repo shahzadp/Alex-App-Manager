@@ -1,4 +1,4 @@
-package io.github.shahzadp.appmanager.install
+﻿package io.github.shahzadp.appmanager.install
 
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
@@ -13,6 +13,7 @@ import android.os.Build
 import android.os.SystemClock
 import android.provider.Settings
 import io.github.shahzadp.appmanager.data.CatalogItem
+import io.github.shahzadp.appmanager.data.IconRepository
 import io.github.shahzadp.appmanager.data.InstalledApps
 import io.github.shahzadp.appmanager.data.Release
 import io.github.shahzadp.appmanager.data.ReleaseAsset
@@ -60,6 +61,7 @@ sealed interface InstallState {
 class InstallController(
     private val context: Context,
     private val installedApps: InstalledApps,
+    private val icons: IconRepository,
 ) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -111,6 +113,8 @@ class InstallController(
                 if (!destination.isUsableCopyOf(asset)) {
                     download(item, asset, destination)
                 }
+                // Best-effort: cache the launcher icon from the APK we just had.
+                icons.extract(item, release, destination)
                 verifyAndInstall(item, destination)
             } catch (cancelled: CancellationException) {
                 _states.update { it - item.id }
@@ -197,7 +201,7 @@ class InstallController(
                     connectTimeout = 15_000
                     readTimeout = 30_000
                     instanceFollowRedirects = true
-                    setRequestProperty("User-Agent", "AlexApps/0.1 (+https://github.com/shahzadp)")
+                    setRequestProperty("User-Agent", "AlexApps/0.2 (+https://github.com/shahzadp)")
                     setRequestProperty("Accept", "application/octet-stream")
                 }
 
@@ -440,3 +444,4 @@ class InstallController(
     private fun File.isUsableCopyOf(asset: ReleaseAsset): Boolean =
         exists() && length() > 0 && (asset.size <= 0 || length() == asset.size)
 }
+
