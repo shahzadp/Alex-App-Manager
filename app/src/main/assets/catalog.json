@@ -108,6 +108,23 @@
       "minAndroid": "7.0"
     },
     {
+      "id": "alexyomi",
+      "name": "Alexyomi",
+      "tagline": "The MyAnimeList-centric anime app: in-app MPV player, MAL sync and a Movies tab.",
+      "description": "A MyAnimeList-centric fork of AniYomi. Your MAL list with progress sync, seasonal and top, an in-app MPV player with custom mpv.conf/input.conf, plus a Movies tab with an in-app browser that detects direct streams and an ad blocker.",
+      "section": "APP",
+      "repo": "shahzadp/Alexyomi",
+      "package": "xyz.jmir.tachiyomi.mi",
+      "assetPattern": "^app-arm64-v8a-release\\.apk$",
+      "version": "0.19.3",
+      "asset": "app-arm64-v8a-release.apk",
+      "size": 56053615,
+      "icon": "ic_app_alexyomi",
+      "accent": "#0284C7",
+      "tags": ["Kotlin", "Jetpack Compose", "MPV", "AniYomi fork", "MyAnimeList"],
+      "minAndroid": "8.0"
+    },
+    {
       "id": "portfolio",
       "name": "Portfolio",
       "tagline": "The portfolio PWA: selected projects, CV and contact, installable from your browser.",

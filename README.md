@@ -24,13 +24,14 @@ downloads and updates itself.
 ## What is in the catalogue
 
 The list ships as `app/src/main/assets/catalog.json`, so a fresh install works
-with no connection. Seven entries — six installable APKs and the portfolio PWA:
+with no connection. Eight entries — seven installable APKs and the portfolio PWA:
 
 | App | Package | Section | Pinned release |
 |---|---|---|---|
 | Recorder by Alex | `com.alex.cam` | Apps | v1.0 |
 | Photo Editor by Alex | `com.alex.photoeditor` | Apps | v1.0 |
 | Alex Store | `io.github.shahzadp.alex_store` | Apps | v1.2.3 |
+| Alexyomi | `xyz.jmir.tachiyomi.mi` | Apps | v0.19.3 |
 | 4 Games by Alex | `com.example.artgallery` | Games | v1.37 (`horizon` asset) |
 | Project Alice | `org.projectalice.mobile` | Games | v0.6 |
 | DoL by Alex | `com.vrelnir.dol` | Games | v0.5.13.8 |
