@@ -103,6 +103,7 @@ class CatalogRepository(context: Context) {
         "ic_app_alice" -> R.drawable.ic_app_alice
         "ic_app_dol" -> R.drawable.ic_app_dol
         "ic_app_store" -> R.drawable.ic_app_store
+        "ic_app_alexyomi" -> R.drawable.ic_app_alexyomi
         "ic_app_portfolio" -> R.drawable.ic_app_portfolio
         else -> R.drawable.ic_launcher_foreground
     }
